@@ -1,2 +1,2 @@
-# rumble-livestream-api-lib-go
+# rumble-livestream-lib-go
 Go library for accessing Rumble's Live Stream API

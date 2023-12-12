@@ -1,5 +1,7 @@
 github.com/robertkrimen/otto v0.2.1 h1:FVP0PJ0AHIjC+N4pKCG9yCDz6LHNPCwi/GKID5pGGF0=
 github.com/robertkrimen/otto v0.2.1/go.mod h1:UPwtJ1Xu7JrLcZjNWN8orJaM5n5YEtqL//farB5FlRY=
+github.com/tylertravisty/random v0.0.0-20210907021019-42b7944f3ad5 h1:13ClHNZRQ+3Ktg6Q6MVjcGZS9xBiFpmgvUg0jkQ/TEY=
+github.com/tylertravisty/random v0.0.0-20210907021019-42b7944f3ad5/go.mod h1:4mNgC4SPDnTcDJ5U2JZW1hCrVZdUQNWoLlp+t57gOLU=
 golang.org/x/text v0.4.0 h1:BrVqGRd7+k1DiOgtnFvAkoQEWQvBc25ouMJM6429SFg=
 golang.org/x/text v0.4.0/go.mod h1:mrYo+phRRbMaCq/xk9113O4dZlRixOauAjOtrjsXDZ8=
 gopkg.in/sourcemap.v1 v1.0.5 h1:inv58fC9f9J3TK2Y2R1NPntXEn3/wjWHkonhIUODNTI=

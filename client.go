@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -14,7 +13,8 @@ import (
 )
 
 const (
-	urlWeb        = "https://rumble.com"
+	domain        = "rumble.com"
+	urlWeb        = "https://" + domain
 	urlGetSalts   = urlWeb + "/service.php?name=user.get_salts"
 	urlUserLogin  = urlWeb + "/service.php?name=user.login"
 	urlUserLogout = urlWeb + "/service.php?name=user.logout"
@@ -26,15 +26,25 @@ type Client struct {
 	StreamUrl  string
 }
 
-func (c *Client) printCookies() {
+func (c *Client) cookies() ([]*http.Cookie, error) {
 	u, err := url.Parse(urlWeb)
 	if err != nil {
-		log.Fatal("url.Parse err=", err)
+		return nil, fmt.Errorf("error parsing domain: %v", err)
 	}
-	fmt.Println("Cookies:")
-	for _, cookie := range c.httpClient.Jar.Cookies(u) {
-		fmt.Println(cookie)
+	return c.httpClient.Jar.Cookies(u), nil
+}
+
+func (c *Client) PrintCookies() error {
+	cookies, err := c.cookies()
+	if err != nil {
+		return pkgErr("error getting cookies", err)
 	}
+	fmt.Println("Cookies:", len(cookies))
+	for _, cookie := range cookies {
+		fmt.Println(cookie.String())
+	}
+
+	return nil
 }
 
 func NewClient(streamKey string, streamUrl string) (*Client, error) {
@@ -81,17 +91,17 @@ func (c *Client) Login(username string, password string) error {
 	return nil
 }
 
-func (c *Client) getWeb() error {
-	resp, err := c.httpClient.Get(urlWeb)
+func (c *Client) getWebpage(url string) (*http.Response, error) {
+	resp, err := c.httpClient.Get(url)
 	if err != nil {
-		return fmt.Errorf("http Get request returned error: %v", err)
+		return nil, fmt.Errorf("http Get request returned error: %v", err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("http Get response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
+		resp.Body.Close()
+		return nil, fmt.Errorf("http Get response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
 	}
 
-	return nil
+	return resp, nil
 }
 
 func (c *Client) getSalts(username string) ([]string, error) {
@@ -112,7 +122,6 @@ func (c *Client) getSalts(username string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading body bytes: %v", err)
 	}
-	fmt.Println("BodyB:", string(bodyB))
 
 	var gsr GetSaltsResponse
 	err = json.NewDecoder(strings.NewReader(string(bodyB))).Decode(&gsr)
@@ -142,8 +151,6 @@ func (c *Client) userLogin(username string, password string, salts []string) err
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http Post response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
 	}
-	bodyB, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(bodyB))
 
 	return nil
 }

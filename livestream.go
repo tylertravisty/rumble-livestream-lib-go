@@ -89,12 +89,8 @@ type LivestreamResponse struct {
 	Livestreams   []Livestream `json:"livestreams"`
 }
 
-type Client struct {
-	UrlKey string
-}
-
 func (c *Client) Request() (*LivestreamResponse, error) {
-	resp, err := http.Get(c.UrlKey)
+	resp, err := http.Get(c.StreamKey)
 	if err != nil {
 		return nil, pkgErr("http Get request returned error", err)
 	}

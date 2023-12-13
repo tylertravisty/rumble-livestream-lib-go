@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tylertravisty/random"
+	"github.com/tylertravisty/go-utils/random"
 )
 
 type ChatInfo struct {

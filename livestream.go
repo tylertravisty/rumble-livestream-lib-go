@@ -83,6 +83,9 @@ type LivestreamResponse struct {
 	Now           int64        `json:"now"`
 	Type          string       `json:"type"`
 	UserID        string       `json:"user_id"`
+	Username      string       `json:"username"`
+	ChannelID     int64        `json:"channel_id"`
+	ChannelName   string       `json:"channel_name"`
 	MaxNumResults int64        `json:"max_num_results"`
 	Followers     Followers    `json:"followers"`
 	Subscribers   Subscribers  `json:"subscribers"`

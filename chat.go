@@ -82,7 +82,7 @@ type ChatRequest struct {
 	Data ChatData `json:"data"`
 }
 
-func (c *Client) Chat(message string) error {
+func (c *Client) Chat(asChannel bool, message string) error {
 	if c.httpClient == nil {
 		return pkgErr("", fmt.Errorf("http client is nil"))
 	}
@@ -103,9 +103,13 @@ func (c *Client) Chat(message string) error {
 				Text: message,
 			},
 			Rant:      nil,
-			ChannelID: &chatInfo.ChannelID,
+			ChannelID: nil,
 		},
 	}
+	if asChannel {
+		body.Data.ChannelID = &chatInfo.ChannelID
+	}
+
 	bodyB, err := json.Marshal(body)
 	if err != nil {
 		return pkgErr("error marshaling request body into json", err)

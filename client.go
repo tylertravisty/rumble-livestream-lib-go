@@ -132,12 +132,38 @@ func (c *Client) getSalts(username string) ([]string, error) {
 	return gsr.Data.Salts, nil
 }
 
-type User struct {
-	LoggedIn bool `json:"logged_in"`
+type DataBool struct {
+	Session bool `json:"session"`
 }
 
-type LoginResponse struct {
-	User User `json:"user"`
+type LoginResponseBool struct {
+	Data DataBool `json:"data"`
+}
+
+type DataString struct {
+	Session string `json:"session"`
+}
+
+type LoginResponseString struct {
+	Data DataString `json:"data"`
+}
+
+func loginResponseSession(body []byte) (string, error) {
+	bodyS := string(body)
+
+	var lrs LoginResponseString
+	err := json.NewDecoder(strings.NewReader(bodyS)).Decode(&lrs)
+	if err == nil {
+		return lrs.Data.Session, nil
+	}
+
+	var lrb LoginResponseBool
+	err = json.NewDecoder(strings.NewReader(bodyS)).Decode(&lrb)
+	if err == nil {
+		return "false", nil
+	}
+
+	return "", fmt.Errorf("error decoding login response")
 }
 
 func (c *Client) userLogin(username string, password string, salts []string) error {
@@ -165,13 +191,12 @@ func (c *Client) userLogin(username string, password string, salts []string) err
 		return fmt.Errorf("error reading body bytes: %v", err)
 	}
 
-	var lr LoginResponse
-	err = json.NewDecoder(strings.NewReader(string(bodyB))).Decode(&lr)
+	session, err := loginResponseSession(bodyB)
 	if err != nil {
-		return fmt.Errorf("error decoding response body from server: %v", err)
+		return fmt.Errorf("error getting login response session: %v", err)
 	}
 
-	if !lr.User.LoggedIn {
+	if session == "false" {
 		return fmt.Errorf("failed to log in")
 	}
 

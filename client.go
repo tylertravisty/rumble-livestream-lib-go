@@ -132,6 +132,14 @@ func (c *Client) getSalts(username string) ([]string, error) {
 	return gsr.Data.Salts, nil
 }
 
+type User struct {
+	LoggedIn bool `json:"logged_in"`
+}
+
+type LoginResponse struct {
+	User User `json:"user"`
+}
+
 func (c *Client) userLogin(username string, password string, salts []string) error {
 	hashes, err := generateHashes(password, salts)
 	if err != nil {
@@ -150,6 +158,21 @@ func (c *Client) userLogin(username string, password string, salts []string) err
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http Post response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
+	}
+
+	bodyB, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading body bytes: %v", err)
+	}
+
+	var lr LoginResponse
+	err = json.NewDecoder(strings.NewReader(string(bodyB))).Decode(&lr)
+	if err != nil {
+		return fmt.Errorf("error decoding response body from server: %v", err)
+	}
+
+	if !lr.User.LoggedIn {
+		return fmt.Errorf("failed to log in")
 	}
 
 	return nil

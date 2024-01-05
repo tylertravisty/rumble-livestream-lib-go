@@ -82,6 +82,16 @@ type ChatRequest struct {
 	Data ChatData `json:"data"`
 }
 
+type Error struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Type    string `json:"type"`
+}
+
+type ChatResponse struct {
+	Errors []Error `json:"errors"`
+}
+
 func (c *Client) Chat(asChannel bool, message string) error {
 	if c.httpClient == nil {
 		return pkgErr("", fmt.Errorf("http client is nil"))
@@ -123,6 +133,16 @@ func (c *Client) Chat(asChannel bool, message string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http Post response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
+	}
+
+	var cr ChatResponse
+	err = json.NewDecoder(strings.NewReader(string(bodyB))).Decode(&cr)
+	if err != nil {
+		return fmt.Errorf("error decoding response body from server: %v", err)
+	}
+
+	if len(cr.Errors) != 0 {
+		return fmt.Errorf("server returned an error: %s", cr.Errors[0].Message)
 	}
 
 	return nil

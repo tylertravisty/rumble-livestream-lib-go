@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 type Follower struct {
@@ -93,7 +94,8 @@ type LivestreamResponse struct {
 }
 
 func (c *Client) Request() (*LivestreamResponse, error) {
-	resp, err := http.Get(c.StreamKey)
+	hcl := http.Client{Timeout: 30 * time.Second}
+	resp, err := hcl.Get(c.StreamKey)
 	if err != nil {
 		return nil, pkgErr("http Get request returned error", err)
 	}

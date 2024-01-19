@@ -249,7 +249,7 @@ func (c *Client) StartChatStream(handle func(cv ChatView), handleError func(err 
 	err := sseCl.SubscribeChan("", sseEvent)
 	if err != nil {
 		cancel()
-		return pkgErr("error subscribing to chat stream", err)
+		return pkgErr(fmt.Sprintf("error subscribing to chat stream %s", c.chatInfo.StreamUrl()), err)
 	}
 
 	streamCtx, stop := context.WithCancel(context.Background())

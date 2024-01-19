@@ -8,6 +8,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/robertkrimen/otto"
 )
@@ -21,9 +22,12 @@ const (
 )
 
 type Client struct {
-	httpClient *http.Client
-	StreamKey  string
-	StreamUrl  string
+	httpClient   *http.Client
+	chatInfo     *ChatInfo
+	chatStream   *ChatStream
+	chatStreamMu sync.Mutex
+	StreamKey    string
+	StreamUrl    string
 }
 
 func (c *Client) cookies() ([]*http.Cookie, error) {
@@ -53,7 +57,7 @@ func NewClient(streamKey string, streamUrl string) (*Client, error) {
 		return nil, pkgErr("error creating http client", err)
 	}
 
-	return &Client{cl, streamKey, streamUrl}, nil
+	return &Client{httpClient: cl, StreamKey: streamKey, StreamUrl: streamUrl}, nil
 }
 
 func newHttpClient() (*http.Client, error) {

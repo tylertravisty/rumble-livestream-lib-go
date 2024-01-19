@@ -3,14 +3,18 @@ package rumblelivestreamlib
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/r3labs/sse/v2"
 	"github.com/tylertravisty/go-utils/random"
+	"gopkg.in/cenkalti/backoff.v1"
 )
 
 type ChatInfo struct {
@@ -19,11 +23,25 @@ type ChatInfo struct {
 	ChannelID int
 }
 
-func (ci *ChatInfo) Url() string {
+func (ci *ChatInfo) MessageUrl() string {
 	return fmt.Sprintf("%s/chat/%s/message", ci.UrlPrefix, ci.ChatID)
 }
 
-func (c *Client) streamChatInfo() (*ChatInfo, error) {
+func (ci *ChatInfo) StreamUrl() string {
+	return fmt.Sprintf("%s/chat/api/chat/%s/stream", ci.UrlPrefix, ci.ChatID)
+}
+
+func (c *Client) ChatInfo() error {
+	ci, err := c.getChatInfo()
+	if err != nil {
+		return pkgErr("error getting chat info", err)
+	}
+
+	c.chatInfo = ci
+	return nil
+}
+
+func (c *Client) getChatInfo() (*ChatInfo, error) {
 	if c.StreamUrl == "" {
 		return nil, fmt.Errorf("stream url is empty")
 	}
@@ -97,9 +115,15 @@ func (c *Client) Chat(asChannel bool, message string) error {
 		return pkgErr("", fmt.Errorf("http client is nil"))
 	}
 
-	chatInfo, err := c.streamChatInfo()
-	if err != nil {
-		return pkgErr("error getting stream chat info", err)
+	// chatInfo, err := c.streamChatInfo()
+	// if err != nil {
+	// 	return pkgErr("error getting stream chat info", err)
+	// }
+	if c.chatInfo == nil {
+		err := c.ChatInfo()
+		if err != nil {
+			return err
+		}
 	}
 
 	requestID, err := random.String(32)
@@ -117,7 +141,7 @@ func (c *Client) Chat(asChannel bool, message string) error {
 		},
 	}
 	if asChannel {
-		body.Data.ChannelID = &chatInfo.ChannelID
+		body.Data.ChannelID = &c.chatInfo.ChannelID
 	}
 
 	bodyB, err := json.Marshal(body)
@@ -125,7 +149,7 @@ func (c *Client) Chat(asChannel bool, message string) error {
 		return pkgErr("error marshaling request body into json", err)
 	}
 
-	resp, err := c.httpClient.Post(chatInfo.Url(), "application/json", bytes.NewReader(bodyB))
+	resp, err := c.httpClient.Post(c.chatInfo.MessageUrl(), "application/json", bytes.NewReader(bodyB))
 	if err != nil {
 		return pkgErr("http Post request returned error", err)
 	}
@@ -146,4 +170,206 @@ func (c *Client) Chat(asChannel bool, message string) error {
 	}
 
 	return nil
+}
+
+type ChatStream struct {
+	sseClient *sse.Client
+	sseEvent  chan *sse.Event
+	stop      context.CancelFunc
+}
+
+type ChatEventChannel struct {
+	ID       string `json:"id"`
+	Image1   string `json:"image.1"`
+	Link     string `json:"link"`
+	Username string `json:"username"`
+}
+
+type ChatEventBlockData struct {
+	Text string `json:"text"`
+}
+
+type ChatEventBlock struct {
+	Data ChatEventBlockData `json:"data"`
+	Type string             `json:"type"`
+}
+
+type ChatEventRant struct {
+	Duration   int    `json:"duration"`
+	ExpiresOn  string `json:"expires_on"`
+	PriceCents int    `json:"price_cents"`
+}
+
+type ChatEventMessage struct {
+	Blocks    []ChatEventBlock `json:"blocks"`
+	ChannelID *int64           `json:"channel_id"`
+	ID        string           `json:"id"`
+	Rant      *ChatEventRant   `json:"rant"`
+	Text      string           `json:"text"`
+	Time      string           `json:"time"`
+	UserID    string           `json:"user_id"`
+}
+
+type ChatEventUser struct {
+	Badges     []string `json:"badges"`
+	Color      string   `json:"color"`
+	ID         string   `json:"id"`
+	Image1     string   `json:"image.1"`
+	IsFollower bool     `json:"is_follower"`
+	Link       string   `json:"link"`
+	Username   string   `json:"username"`
+}
+
+type ChatEventData struct {
+	Channels []ChatEventChannel `json:"channels"`
+	Messages []ChatEventMessage `json:"messages"`
+	Users    []ChatEventUser    `json:"users"`
+}
+
+type ChatEvent struct {
+	Data      ChatEventData `json:"data"`
+	RequestID string        `json:"request_id"`
+	Type      string        `json:"type"`
+}
+
+func (c *Client) StartChatStream(handle func(cv ChatView), handleError func(err error)) error {
+	c.chatStreamMu.Lock()
+	defer c.chatStreamMu.Unlock()
+	if c.chatStream != nil {
+		return pkgErr("", fmt.Errorf("chat stream already started"))
+	}
+	sseEvent := make(chan *sse.Event)
+	sseCl := sse.NewClient(c.chatInfo.StreamUrl())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	sseCl.ReconnectStrategy = backoff.WithContext(
+		backoff.NewExponentialBackOff(),
+		ctx,
+	)
+
+	err := sseCl.SubscribeChan("", sseEvent)
+	if err != nil {
+		cancel()
+		return pkgErr("error subscribing to chat stream", err)
+	}
+
+	streamCtx, stop := context.WithCancel(context.Background())
+
+	c.chatStream = &ChatStream{sseClient: sseCl, sseEvent: sseEvent, stop: stop}
+	go startChatStream(streamCtx, sseEvent, handle, handleError)
+
+	return nil
+}
+
+func (c *Client) StopChatStream() {
+	c.chatStreamMu.Lock()
+	defer c.chatStreamMu.Unlock()
+	// TODO: what order should these be in?
+	c.chatStream.sseClient.Unsubscribe(c.chatStream.sseEvent)
+	c.chatStream.stop()
+	c.chatStream = nil
+}
+
+func startChatStream(ctx context.Context, event chan *sse.Event, handle func(cv ChatView), handleError func(err error)) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg := <-event:
+			if msg == nil {
+				handleError(fmt.Errorf("received nil event"))
+			} else {
+				chats, err := parseEvent(msg.Data)
+				if err != nil {
+					handleError(err)
+				} else {
+					for _, chat := range chats {
+						handle(chat)
+					}
+				}
+			}
+		}
+	}
+}
+
+type ChatView struct {
+	Badges     []string
+	Color      string
+	ImageUrl   string
+	IsFollower bool
+	Rant       int
+	Text       string
+	Username   string
+}
+
+func parseEvent(event []byte) ([]ChatView, error) {
+	var ce ChatEvent
+	err := json.Unmarshal(event, &ce)
+	if err != nil {
+		return nil, fmt.Errorf("error un-marshaling event: %v", err)
+	}
+
+	users := chatUsers(ce.Data.Users)
+	channels := chatChannels(ce.Data.Channels)
+
+	messages, err := parseMessages(ce.Data.Messages, users, channels)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing messages: %v", err)
+	}
+
+	return messages, nil
+
+}
+
+func chatUsers(users []ChatEventUser) map[string]ChatEventUser {
+	usersMap := map[string]ChatEventUser{}
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	return usersMap
+}
+
+func chatChannels(channels []ChatEventChannel) map[string]ChatEventChannel {
+	channelsMap := map[string]ChatEventChannel{}
+	for _, channel := range channels {
+		channelsMap[channel.ID] = channel
+	}
+
+	return channelsMap
+}
+
+func parseMessages(messages []ChatEventMessage, users map[string]ChatEventUser, channels map[string]ChatEventChannel) ([]ChatView, error) {
+	views := []ChatView{}
+	for _, message := range messages {
+		var view ChatView
+		user, exists := users[message.UserID]
+		if !exists {
+			return nil, fmt.Errorf("user ID does not exist: %s", message.UserID)
+		}
+
+		view.Badges = user.Badges
+		view.Color = user.Color
+		view.ImageUrl = user.Image1
+		view.IsFollower = user.IsFollower
+		view.Text = message.Text
+		if message.Rant != nil {
+			view.Rant = message.Rant.PriceCents
+		}
+		view.Username = user.Username
+
+		if message.ChannelID != nil {
+			cid := strconv.Itoa(int(*message.ChannelID))
+			channel, exists := channels[cid]
+			if !exists {
+				return nil, fmt.Errorf("channel ID does not exist: %d", *message.ChannelID)
+			}
+
+			view.ImageUrl = channel.Image1
+			view.Username = channel.Username
+		}
+
+		views = append(views, view)
+	}
+
+	return views, nil
 }

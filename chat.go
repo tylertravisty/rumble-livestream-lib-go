@@ -232,16 +232,16 @@ type ChatEvent struct {
 	Type      string        `json:"type"`
 }
 
-type ChatEventDataFix struct {
+type ChatEventDataNoChannels struct {
 	Channels [][]string         `json:"channels"`
 	Messages []ChatEventMessage `json:"messages"`
 	Users    []ChatEventUser    `json:"users"`
 }
 
-type ChatEventFix struct {
-	Data      ChatEventDataFix `json:"data"`
-	RequestID string           `json:"request_id"`
-	Type      string           `json:"type"`
+type ChatEventNoChannels struct {
+	Data      ChatEventDataNoChannels `json:"data"`
+	RequestID string                  `json:"request_id"`
+	Type      string                  `json:"type"`
 }
 
 func (c *Client) StartChatStream(handle func(cv ChatView), handleError func(err error)) error {
@@ -317,14 +317,14 @@ func parseEvent(event []byte) ([]ChatView, error) {
 	var ce ChatEvent
 	err := json.Unmarshal(event, &ce)
 	if err != nil {
-		var cef ChatEventFix
-		errFix := json.Unmarshal(event, &cef)
-		if errFix != nil {
+		var cenc ChatEventNoChannels
+		errNC := json.Unmarshal(event, &cenc)
+		if errNC != nil {
 			return nil, fmt.Errorf("error un-marshaling event: %v", err)
 		}
 
-		ce.Data.Messages = cef.Data.Messages
-		ce.Data.Users = cef.Data.Users
+		ce.Data.Messages = cenc.Data.Messages
+		ce.Data.Users = cenc.Data.Users
 	}
 
 	users := chatUsers(ce.Data.Users)

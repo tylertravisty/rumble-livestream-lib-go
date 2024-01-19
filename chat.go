@@ -28,7 +28,7 @@ func (ci *ChatInfo) MessageUrl() string {
 }
 
 func (ci *ChatInfo) StreamUrl() string {
-	return fmt.Sprintf("%s/chat/api/chat/%s/stream", ci.UrlPrefix, ci.ChatID)
+	return fmt.Sprintf("%s/chat/%s/stream", ci.UrlPrefix, ci.ChatID)
 }
 
 func (c *Client) ChatInfo() error {

@@ -233,6 +233,7 @@ type ChatEvent struct {
 }
 
 type ChatEventDataNoChannels struct {
+	// TODO: change [][]string to [][]any and test
 	Channels [][]string         `json:"channels"`
 	Messages []ChatEventMessage `json:"messages"`
 	Users    []ChatEventUser    `json:"users"`
@@ -307,9 +308,11 @@ type ChatView struct {
 	Badges     []string
 	Color      string
 	ImageUrl   string
+	Init       bool
 	IsFollower bool
 	Rant       int
 	Text       string
+	Type       string
 	Username   string
 }
 
@@ -325,18 +328,18 @@ func parseEvent(event []byte) ([]ChatView, error) {
 
 		ce.Data.Messages = cenc.Data.Messages
 		ce.Data.Users = cenc.Data.Users
+		ce.Type = cenc.Type
 	}
 
 	users := chatUsers(ce.Data.Users)
 	channels := chatChannels(ce.Data.Channels)
 
-	messages, err := parseMessages(ce.Data.Messages, users, channels)
+	messages, err := parseMessages(ce.Type, ce.Data.Messages, users, channels)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing messages: %v", err)
 	}
 
 	return messages, nil
-
 }
 
 func chatUsers(users []ChatEventUser) map[string]ChatEventUser {
@@ -357,7 +360,7 @@ func chatChannels(channels []ChatEventChannel) map[string]ChatEventChannel {
 	return channelsMap
 }
 
-func parseMessages(messages []ChatEventMessage, users map[string]ChatEventUser, channels map[string]ChatEventChannel) ([]ChatView, error) {
+func parseMessages(eventType string, messages []ChatEventMessage, users map[string]ChatEventUser, channels map[string]ChatEventChannel) ([]ChatView, error) {
 	views := []ChatView{}
 	for _, message := range messages {
 		var view ChatView
@@ -370,10 +373,11 @@ func parseMessages(messages []ChatEventMessage, users map[string]ChatEventUser, 
 		view.Color = user.Color
 		view.ImageUrl = user.Image1
 		view.IsFollower = user.IsFollower
-		view.Text = message.Text
 		if message.Rant != nil {
 			view.Rant = message.Rant.PriceCents
 		}
+		view.Text = message.Text
+		view.Type = eventType
 		view.Username = user.Username
 
 		if message.ChannelID != nil {

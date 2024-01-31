@@ -276,9 +276,18 @@ func (c *Client) StartChatStream(handle func(cv ChatView), handleError func(err 
 func (c *Client) StopChatStream() {
 	c.chatStreamMu.Lock()
 	defer c.chatStreamMu.Unlock()
+
+	if c.chatStream == nil {
+		return
+	}
 	// TODO: what order should these be in?
-	c.chatStream.sseClient.Unsubscribe(c.chatStream.sseEvent)
-	c.chatStream.stop()
+	if c.chatStream.sseClient != nil {
+		c.chatStream.sseClient.Unsubscribe(c.chatStream.sseEvent)
+	}
+	if c.chatStream.stop != nil {
+		c.chatStream.stop()
+	}
+
 	c.chatStream = nil
 }
 

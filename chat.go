@@ -314,15 +314,16 @@ func startChatStream(ctx context.Context, event chan *sse.Event, handle func(cv 
 }
 
 type ChatView struct {
-	Badges     []string
-	Color      string
-	ImageUrl   string
-	Init       bool
-	IsFollower bool
-	Rant       int
-	Text       string
-	Type       string
-	Username   string
+	Badges      []string
+	ChannelName string
+	Color       string
+	ImageUrl    string
+	Init        bool
+	IsFollower  bool
+	Rant        int
+	Text        string
+	Type        string
+	Username    string
 }
 
 func parseEvent(event []byte) ([]ChatView, error) {
@@ -397,7 +398,7 @@ func parseMessages(eventType string, messages []ChatEventMessage, users map[stri
 			}
 
 			view.ImageUrl = channel.Image1
-			view.Username = channel.Username
+			view.ChannelName = channel.Username
 		}
 
 		views = append(views, view)

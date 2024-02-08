@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"sync"
 
+	cookiejar "github.com/juju/persistent-cookiejar"
 	"github.com/robertkrimen/otto"
 )
 
@@ -277,16 +277,45 @@ func (c *Client) userLogout() error {
 	return nil
 }
 
+type LoggedInResponseUser struct {
+	LoggedIn bool `json:"logged_in"`
+}
+
+type LoggedInResponse struct {
+	User LoggedInResponseUser `json:"user"`
+}
+
 func (c *Client) LoggedIn() (bool, error) {
-	resp, err := c.httpClient.Get(urlAccount)
+	// resp, err := c.httpClient.Get(urlAccount)
+	// if err != nil {
+	// 	return false, pkgErr("error getting account page", err)
+	// }
+	// defer resp.Body.Close()
+
+	// if resp.Request.URL.String() != urlAccount {
+	// 	return false, nil
+	// }
+
+	// fmt.Println("Account page works")
+
+	// return true, nil
+
+	resp, err := c.httpClient.Get(urlUserLogin)
 	if err != nil {
 		return false, pkgErr("error getting account page", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.Request.URL.String() != urlAccount {
-		return false, nil
+	bodyB, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, pkgErr("error reading body bytes", err)
 	}
 
-	return true, nil
+	var lir LoggedInResponse
+	err = json.NewDecoder(strings.NewReader(string(bodyB))).Decode(&lir)
+	if err != nil {
+		return false, pkgErr("error un-marshaling response body", err)
+	}
+
+	return lir.User.LoggedIn, nil
 }

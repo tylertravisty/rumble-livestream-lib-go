@@ -16,6 +16,7 @@ import (
 const (
 	domain        = "rumble.com"
 	urlWeb        = "https://" + domain
+	urlAccount    = urlWeb + "/account/"
 	urlGetSalts   = urlWeb + "/service.php?name=user.get_salts"
 	urlUserLogin  = urlWeb + "/service.php?name=user.login"
 	urlUserLogout = urlWeb + "/service.php?name=user.logout"
@@ -51,20 +52,32 @@ func (c *Client) PrintCookies() error {
 	return nil
 }
 
-func NewClient(streamKey string, streamUrl string) (*Client, error) {
-	cl, err := newHttpClient()
+type NewClientOptions struct {
+	Cookies   []*http.Cookie
+	StreamKey string
+	StreamUrl string
+}
+
+func NewClient(opts NewClientOptions) (*Client, error) {
+	cl, err := newHttpClient(opts.Cookies)
 	if err != nil {
 		return nil, pkgErr("error creating http client", err)
 	}
 
-	return &Client{httpClient: cl, StreamKey: streamKey, StreamUrl: streamUrl}, nil
+	return &Client{httpClient: cl, StreamKey: opts.StreamKey, StreamUrl: opts.StreamUrl}, nil
 }
 
-func newHttpClient() (*http.Client, error) {
+func newHttpClient(cookies []*http.Cookie) (*http.Client, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cookiejar: %v", err)
 	}
+
+	url, err := url.Parse(urlWeb)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing domain: %v", err)
+	}
+	jar.SetCookies(url, cookies)
 
 	return &http.Client{Jar: jar}, nil
 }
@@ -77,22 +90,27 @@ type GetSaltsResponse struct {
 	Data GetSaltsData `json:"data"`
 }
 
-func (c *Client) Login(username string, password string) error {
+func (c *Client) Login(username string, password string) ([]*http.Cookie, error) {
 	if c.httpClient == nil {
-		return pkgErr("", fmt.Errorf("http client is nil"))
+		return nil, pkgErr("", fmt.Errorf("http client is nil"))
 	}
 
 	salts, err := c.getSalts(username)
 	if err != nil {
-		return pkgErr("error getting salts", err)
+		return nil, pkgErr("error getting salts", err)
 	}
 
 	err = c.userLogin(username, password, salts)
 	if err != nil {
-		return pkgErr("error logging in", err)
+		return nil, pkgErr("error logging in", err)
 	}
 
-	return nil
+	cookies, err := c.cookies()
+	if err != nil {
+		return nil, pkgErr("error getting cookies", err)
+	}
+
+	return cookies, nil
 }
 
 func (c *Client) getWebpage(url string) (*http.Response, error) {
@@ -257,4 +275,18 @@ func (c *Client) userLogout() error {
 	}
 
 	return nil
+}
+
+func (c *Client) LoggedIn() (bool, error) {
+	resp, err := c.httpClient.Get(urlAccount)
+	if err != nil {
+		return false, pkgErr("error getting account page", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.Request.URL.String() != urlAccount {
+		return false, nil
+	}
+
+	return true, nil
 }

@@ -53,9 +53,9 @@ func (c *Client) PrintCookies() error {
 }
 
 type NewClientOptions struct {
-	Cookies   []*http.Cookie
-	StreamKey string
-	StreamUrl string
+	Cookies   []*http.Cookie `json:"cookies"`
+	StreamKey string         `json:"stream_key"`
+	StreamUrl string         `json:"stream_url"`
 }
 
 func NewClient(opts NewClientOptions) (*Client, error) {

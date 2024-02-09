@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"sync"
 
-	cookiejar "github.com/juju/persistent-cookiejar"
 	"github.com/robertkrimen/otto"
 )
 

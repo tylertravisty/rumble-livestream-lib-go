@@ -100,14 +100,9 @@ func (c *Client) Login(username string, password string) ([]*http.Cookie, error)
 		return nil, pkgErr("error getting salts", err)
 	}
 
-	err = c.userLogin(username, password, salts)
+	cookies, err := c.userLogin(username, password, salts)
 	if err != nil {
 		return nil, pkgErr("error logging in", err)
-	}
-
-	cookies, err := c.cookies()
-	if err != nil {
-		return nil, pkgErr("error getting cookies", err)
 	}
 
 	return cookies, nil
@@ -188,10 +183,10 @@ func loginResponseSession(body []byte) (string, error) {
 	return "", fmt.Errorf("error decoding login response")
 }
 
-func (c *Client) userLogin(username string, password string, salts []string) error {
+func (c *Client) userLogin(username string, password string, salts []string) ([]*http.Cookie, error) {
 	hashes, err := generateHashes(password, salts)
 	if err != nil {
-		return fmt.Errorf("error generating password hashes: %v", err)
+		return nil, fmt.Errorf("error generating password hashes: %v", err)
 	}
 
 	u := url.URL{}
@@ -201,28 +196,29 @@ func (c *Client) userLogin(username string, password string, salts []string) err
 	body := q.Encode()
 	resp, err := c.httpClient.Post(urlUserLogin, "application/x-www-form-urlencoded", strings.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("http Post request returned error: %v", err)
+		return nil, fmt.Errorf("http Post request returned error: %v", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("http Post response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
+		return nil, fmt.Errorf("http Post response status not %s: %s", http.StatusText(http.StatusOK), resp.Status)
 	}
 
 	bodyB, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("error reading body bytes: %v", err)
+		return nil, fmt.Errorf("error reading body bytes: %v", err)
 	}
 
 	session, err := loginResponseSession(bodyB)
 	if err != nil {
-		return fmt.Errorf("error getting login response session: %v", err)
+		return nil, fmt.Errorf("error getting login response session: %v", err)
 	}
 
 	if session == "false" {
-		return fmt.Errorf("failed to log in")
+		return nil, fmt.Errorf("failed to log in")
 	}
 
-	return nil
+	return resp.Cookies(), nil
 }
 
 func generateHashes(password string, salts []string) (string, error) {
@@ -286,23 +282,9 @@ type LoggedInResponse struct {
 }
 
 func (c *Client) LoggedIn() (bool, error) {
-	// resp, err := c.httpClient.Get(urlAccount)
-	// if err != nil {
-	// 	return false, pkgErr("error getting account page", err)
-	// }
-	// defer resp.Body.Close()
-
-	// if resp.Request.URL.String() != urlAccount {
-	// 	return false, nil
-	// }
-
-	// fmt.Println("Account page works")
-
-	// return true, nil
-
 	resp, err := c.httpClient.Get(urlUserLogin)
 	if err != nil {
-		return false, pkgErr("error getting account page", err)
+		return false, pkgErr("error getting login service", err)
 	}
 	defer resp.Body.Close()
 

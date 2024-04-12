@@ -39,7 +39,6 @@ func TestChatInfo(t *testing.T) {
 	if ci.Page == "" {
 		t.Fatal("Want non-empty page")
 	}
-	t.Log("Page:", ci.Page)
 	if ci.UrlPrefix == "" {
 		t.Fatal("Want non-empty url prefix")
 	}

@@ -1,7 +1,3 @@
-# github.com/juju/go4 v0.0.0-20160222163258-40d72ab9641a
-## explicit
-# github.com/juju/persistent-cookiejar v1.0.0
-## explicit
 # github.com/r3labs/sse/v2 v2.10.0
 ## explicit; go 1.13
 github.com/r3labs/sse/v2
@@ -17,11 +13,13 @@ github.com/robertkrimen/otto/token
 # github.com/tylertravisty/go-utils v0.0.0-20230524204414-6893ae548909
 ## explicit; go 1.16
 github.com/tylertravisty/go-utils/random
-# golang.org/x/net v0.0.0-20191116160921-f9c825593386
-## explicit; go 1.11
+# golang.org/x/net v0.24.0
+## explicit; go 1.18
 golang.org/x/net/context
-# golang.org/x/text v0.4.0
-## explicit; go 1.17
+golang.org/x/net/html
+golang.org/x/net/html/atom
+# golang.org/x/text v0.14.0
+## explicit; go 1.18
 golang.org/x/text/feature/plural
 golang.org/x/text/internal
 golang.org/x/text/internal/catmsg
@@ -38,10 +36,6 @@ golang.org/x/text/number
 # gopkg.in/cenkalti/backoff.v1 v1.1.0
 ## explicit
 gopkg.in/cenkalti/backoff.v1
-# gopkg.in/errgo.v1 v1.0.1
-## explicit
-# gopkg.in/retry.v1 v1.0.3
-## explicit; go 1.12
 # gopkg.in/sourcemap.v1 v1.0.5
 ## explicit
 gopkg.in/sourcemap.v1

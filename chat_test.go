@@ -24,7 +24,7 @@ func TestChatInfo(t *testing.T) {
 		t.Skipf("Set %s to run this test.", liveUrlEnvVar)
 	}
 
-	client, err := NewClient(NewClientOptions{StreamUrl: url})
+	client, err := NewClient(NewClientOptions{LiveStreamUrl: url})
 	if err != nil {
 		t.Fatalf("Want NewClient err = nil, got: %v", err)
 	}

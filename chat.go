@@ -50,11 +50,11 @@ func (c *Client) ChatInfo(reload bool) (*ChatInfo, error) {
 }
 
 func (c *Client) getChatInfo() (*ChatInfo, error) {
-	if c.StreamUrl == "" {
+	if c.LiveStreamUrl == "" {
 		return nil, fmt.Errorf("stream url is empty")
 	}
 
-	resp, err := c.getWebpage(c.StreamUrl)
+	resp, err := c.getWebpage(c.LiveStreamUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error getting stream webpage: %v", err)
 	}

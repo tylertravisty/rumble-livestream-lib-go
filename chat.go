@@ -281,6 +281,14 @@ func (c *Client) StartChatStream(handle func(cv ChatView), handleError func(err 
 		return pkgErr("", fmt.Errorf("chat stream already started"))
 	}
 	sseEvent := make(chan *sse.Event)
+
+	if c.chatInfo == nil {
+		ci, err := c.getChatInfo()
+		if err != nil {
+			return pkgErr("error getting chat info", err)
+		}
+		c.chatInfo = ci
+	}
 	sseCl := sse.NewClient(c.chatInfo.StreamUrl())
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	sseCl.ReconnectStrategy = backoff.WithContext(

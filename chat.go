@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -66,6 +65,24 @@ func (c *Client) getChatInfo() (*ChatInfo, error) {
 	lineS, err := r.ReadString('\n')
 	for err == nil {
 		if strings.Contains(lineS, "RumbleChat(") {
+			//start := strings.Index(lineS, "RumbleChat(") + len("RumbleChat(")
+			//if start == -1 {
+			//	return nil, fmt.Errorf("error finding chat function in webpage")
+			//}
+			//end := strings.Index(lineS[start:], ");")
+			//if end == -1 {
+			//	return nil, fmt.Errorf("error finding end of chat function in webpage")
+			//}
+			//argsS := strings.ReplaceAll(lineS[start:start+end], ", ", ",")
+			//argsS = strings.Replace(argsS, "[", "\"[", 1)
+			//n := strings.LastIndex(argsS, "]")
+			//argsS = argsS[:n] + "]\"" + argsS[n+1:]
+			//c := csv.NewReader(strings.NewReader(argsS))
+			//args, err := c.ReadAll()
+			//if err != nil {
+			//	return nil, fmt.Errorf("error parsing csv: %v", err)
+			//}
+			//info := args[0]
 			start := strings.Index(lineS, "RumbleChat(") + len("RumbleChat(")
 			if start == -1 {
 				return nil, fmt.Errorf("error finding chat function in webpage")
@@ -74,21 +91,12 @@ func (c *Client) getChatInfo() (*ChatInfo, error) {
 			if end == -1 {
 				return nil, fmt.Errorf("error finding end of chat function in webpage")
 			}
-			argsS := strings.ReplaceAll(lineS[start:start+end], ", ", ",")
-			argsS = strings.Replace(argsS, "[", "\"[", 1)
-			n := strings.LastIndex(argsS, "]")
-			argsS = argsS[:n] + "]\"" + argsS[n+1:]
-			c := csv.NewReader(strings.NewReader(argsS))
-			args, err := c.ReadAll()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing csv: %v", err)
-			}
-			info := args[0]
-			channelID, err := strconv.Atoi(info[5])
+			args := parseRumbleChatArgs(lineS[start : start+end])
+			channelID, err := strconv.Atoi(args[5])
 			if err != nil {
 				return nil, fmt.Errorf("error converting channel ID argument string to int: %v", err)
 			}
-			chatInfo = &ChatInfo{ChannelID: channelID, ChatID: info[1], UrlPrefix: info[0]}
+			chatInfo = &ChatInfo{ChannelID: channelID, ChatID: args[1], UrlPrefix: args[0]}
 		} else if strings.Contains(lineS, "media-by--a") && strings.Contains(lineS, "author") {
 			r := strings.NewReader(lineS)
 			node, err := html.Parse(r)
@@ -115,6 +123,33 @@ func (c *Client) getChatInfo() (*ChatInfo, error) {
 
 	chatInfo.Page = page
 	return chatInfo, nil
+}
+
+func parseRumbleChatArgs(argsS string) []string {
+	open := 0
+
+	args := []string{}
+	arg := []rune{}
+	for _, c := range argsS {
+		if c == ',' && open == 0 {
+			args = append(args, string(arg))
+			arg = []rune{}
+		} else {
+			if c == '[' {
+				open = open + 1
+			}
+			if c == ']' {
+				open = open - 1
+			}
+
+			arg = append(arg, c)
+		}
+	}
+	if len(arg) > 0 {
+		args = append(args, string(arg))
+	}
+
+	return args
 }
 
 type ChatMessage struct {

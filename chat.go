@@ -132,7 +132,7 @@ func parseRumbleChatArgs(argsS string) []string {
 	arg := []rune{}
 	for _, c := range argsS {
 		if c == ',' && open == 0 {
-			args = append(args, string(arg))
+			args = append(args, strings.TrimSpace(string(arg)))
 			arg = []rune{}
 		} else {
 			if c == '[' {
@@ -146,7 +146,7 @@ func parseRumbleChatArgs(argsS string) []string {
 		}
 	}
 	if len(arg) > 0 {
-		args = append(args, string(arg))
+		args = append(args, strings.TrimSpace(string(arg)))
 	}
 
 	return args

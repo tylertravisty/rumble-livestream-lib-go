@@ -65,24 +65,6 @@ func (c *Client) getChatInfo() (*ChatInfo, error) {
 	lineS, err := r.ReadString('\n')
 	for err == nil {
 		if strings.Contains(lineS, "RumbleChat(") {
-			//start := strings.Index(lineS, "RumbleChat(") + len("RumbleChat(")
-			//if start == -1 {
-			//	return nil, fmt.Errorf("error finding chat function in webpage")
-			//}
-			//end := strings.Index(lineS[start:], ");")
-			//if end == -1 {
-			//	return nil, fmt.Errorf("error finding end of chat function in webpage")
-			//}
-			//argsS := strings.ReplaceAll(lineS[start:start+end], ", ", ",")
-			//argsS = strings.Replace(argsS, "[", "\"[", 1)
-			//n := strings.LastIndex(argsS, "]")
-			//argsS = argsS[:n] + "]\"" + argsS[n+1:]
-			//c := csv.NewReader(strings.NewReader(argsS))
-			//args, err := c.ReadAll()
-			//if err != nil {
-			//	return nil, fmt.Errorf("error parsing csv: %v", err)
-			//}
-			//info := args[0]
 			start := strings.Index(lineS, "RumbleChat(") + len("RumbleChat(")
 			if start == -1 {
 				return nil, fmt.Errorf("error finding chat function in webpage")
@@ -398,6 +380,7 @@ type ChatView struct {
 	IsFollower  bool
 	Rant        int
 	Text        string
+	Time        time.Time
 	Type        string
 	Username    string
 }
@@ -463,6 +446,11 @@ func parseMessages(eventType string, messages []ChatEventMessage, users map[stri
 			view.Rant = message.Rant.PriceCents
 		}
 		view.Text = message.Text
+		t, err := time.Parse(time.RFC3339, message.Time)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing message time: %v", err)
+		}
+		view.Time = t
 		view.Type = eventType
 		view.Username = user.Username
 

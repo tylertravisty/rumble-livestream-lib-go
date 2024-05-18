@@ -18,6 +18,17 @@ import (
 	"gopkg.in/cenkalti/backoff.v1"
 )
 
+const (
+	ChatTypeInit           = "init"
+	ChatTypeMessages       = "messages"
+	ChatTypeMuteUsers      = "mute_users"
+	ChatTypeDeleteMessages = "delete_messages"
+	ChatTypeSubscriber     = "locals_supporter"
+	ChatTypeRaiding        = "raid_confirmed"
+	ChatTypePinMessage     = "pin_message"
+	ChatTypeUnpinMessage   = "unpin_message"
+)
+
 type ChatInfo struct {
 	ChannelID int
 	ChatID    string

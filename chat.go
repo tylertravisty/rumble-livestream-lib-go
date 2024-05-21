@@ -19,6 +19,9 @@ import (
 )
 
 const (
+	ChatBadgeRecurringSubscription = "recurring_subscription"
+	ChatBadgeLocalsSupporter       = "locals_supporter"
+
 	ChatTypeInit           = "init"
 	ChatTypeMessages       = "messages"
 	ChatTypeMuteUsers      = "mute_users"

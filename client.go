@@ -273,11 +273,17 @@ func (c *Client) userLogout() error {
 	return nil
 }
 
+type LoggedInResponseData struct {
+	Username string `json:"username"`
+}
+
 type LoggedInResponseUser struct {
-	LoggedIn bool `json:"logged_in"`
+	ID       string `json:"id"`
+	LoggedIn bool   `json:"logged_in"`
 }
 
 type LoggedInResponse struct {
+	Data LoggedInResponseData `json:"data"`
 	User LoggedInResponseUser `json:"user"`
 }
 

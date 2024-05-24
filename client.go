@@ -287,23 +287,23 @@ type LoggedInResponse struct {
 	User LoggedInResponseUser `json:"user"`
 }
 
-func (c *Client) LoggedIn() (bool, error) {
+func (c *Client) LoggedIn() (*LoggedInResponse, error) {
 	resp, err := c.httpClient.Get(urlUserLogin)
 	if err != nil {
-		return false, pkgErr("error getting login service", err)
+		return nil, pkgErr("error getting login service", err)
 	}
 	defer resp.Body.Close()
 
 	bodyB, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return false, pkgErr("error reading body bytes", err)
+		return nil, pkgErr("error reading body bytes", err)
 	}
 
 	var lir LoggedInResponse
 	err = json.NewDecoder(strings.NewReader(string(bodyB))).Decode(&lir)
 	if err != nil {
-		return false, pkgErr("error un-marshaling response body", err)
+		return nil, pkgErr("error un-marshaling response body", err)
 	}
 
-	return lir.User.LoggedIn, nil
+	return &lir, nil
 }
